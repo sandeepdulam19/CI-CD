@@ -235,7 +235,7 @@ Resources:
         - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
       Policies:
         -
-          PolicyName: "AllowWebappDeploymentBucketPolicy"
+          PolicyName: "allow-webapp-deployment-bucket-policy"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -265,7 +265,7 @@ Resources:
                    Federated: !Ref IDCProvider
                  Condition:
                    StringLike:
-                     "token.actions.githubusercontent.com:sub": !Sub "repo:${GithubRepoName}:*"
+                     token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepoName}:*
           MaxSessionDuration: 3600
           Description: "Github Actions role"
           Policies:
@@ -380,26 +380,27 @@ Resources:
   WebappInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
+      InstanceProfileName: WebappInstanceProfile
       Roles:
         - Ref: WebappRole
 
-  WebappLaunchTemplate:   
+  WebappLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: WebappLaunchTemplate
-      VersionDescription: Initial version
       LaunchTemplateData:
-        ImageId: !Ref ImageId
-        InstanceType: !Ref InstanceType
-        IamInstanceProfile:
-          Name: !Ref WebappInstanceProfile
+        ImageId:
+          Ref: ImageId
+        InstanceType: 
+          Ref: InstanceType
         SecurityGroupIds:
-          - !Ref WebappSecurityGroup
+          - Ref: WebappSecurityGroup
+        IamInstanceProfile:
+          Name:
+            Ref: WebappInstanceProfile  
         UserData:
           "Fn::Base64":
             !Sub |
                 #!/bin/bash
-                echo "Starting web app setup"
 
                 yum  install -y java-1.8.0-openjdk-devel wget
                 java -version
@@ -462,9 +463,6 @@ Resources:
                 systemctl enable amazon-ssm-agent
                 systemctl start amazon-ssm-agent
 
-
-              
-
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -473,18 +471,20 @@ Resources:
       DesiredCapacity: !Ref AutoScalingGroupDesiredCapacity
       MinSize: !Ref AutoScalingGroupMinSize
       MaxSize: !Ref AutoScalingGroupMaxSize
-      LaunchTemplate:
-        LaunchTemplateId: !Ref WebappLaunchTemplate
-        Version: !GetAtt WebappLaunchTemplate.LatestVersionNumber
       VPCZoneIdentifier:
         - Ref: PrivateSubnet1 
         - Ref: PrivateSubnet2 
       TargetGroupARNs:
         - Ref: ALBTargetGroup
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: WebappLaunchTemplate
+        Version: !GetAtt WebappLaunchTemplate.LatestVersionNumber
       Tags:
         - Key: Name
           Value: webapp-example
           PropagateAtLaunch: true
+
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
